@@ -1,31 +1,60 @@
+# Skrypt główny - zbiera dane z aktualnego miesiąca z Wykopu poprzez API i pakuje je do SQLite
+
 import pandas as pd
+import time
+import sqlite3
+
 from grabber import *
 
 if __name__ == "__main__":
-    # info o linku
-    print("\n==== INFORMACJE O KONKRETYM WYKOPALISKU =====")
-    wykopalisko = get_wykop_link_info(4690931)
-    print_pretty_dict(wykopalisko)
+    # bieżący miesiąc i rok
+    cur_year = time.localtime().tm_year
+    cur_month = time.localtime().tm_mon
 
-    # info o linku i komentarze
-    print("\n==== KOMENTARZE =====")
-    komentarze = pd.DataFrame(get_wykop_link_comments(4690931))
-    print(komentarze.head())
+    # pobranie hitów z miesiąca
+    miesiac = get_wykop_month(cur_year, cur_month)
+    miesiac['login'] = miesiac['author'].apply(lambda x: x['login'])
 
-    # wykopujący
-    print("\n==== WYKOPUJĄCY  =====")
-    wykopujacy = pd.DataFrame(get_wykop_upvoters(4690931))
-    print(wykopujacy.head())
+    # tworzymy bazę danych
+    db_conn = sqlite3.connect("wykop_hits_%04d_%02d.sqlite" % (time.localtime().tm_year, time.localtime().tm_mon))
+    c = db_conn.cursor()
 
-    # zakopujący
-    print("\n==== ZAKUPUJĄCY =====")
-    zakopujacy = pd.DataFrame(get_wykop_downvoters(4690931))
-    print(zakopujacy.head())
+    # usuwamy tabelę jeśli istniała
+    c.execute("DROP TABLE IF EXISTS wykop_hits")
+    # tworzymy tabelę na dane
+    c.execute('''CREATE TABLE wykop_hits
+                 (
+                    id long,
+                    date text,
+                    title text,
+                    author text,
+                    desc text,
+                    comments_count int,
+                    vote_count int,
+                    bury_count int,
+                    tags text
+                 )''')
 
-    # hity miesiąca
-    print("\n==== HITY LISTOPADA 2019 =====")
-    listopad = get_wykop_month(2019, 11)
-    print("\n== podsumowanie")
-    print(listopad.describe())
-    print("\n== pocztątek tabelki:")
-    print(listopad.head())
+    # dla kolejnych wierszy:
+    for r in range(len(miesiac)):
+        # weź jeden wiersz
+        row = miesiac.iloc[r]
+
+        # włóż wiersz do tabeli
+        c.execute(
+            "INSERT INTO wykop_hits (id, date, title, author, desc, comments_count, vote_count, bury_count, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (row['id'],
+             row['date'],
+             row['title'],
+             row['login'],
+             row['description'],
+             row['comments_count'],
+             row['vote_count'],
+             row['bury_count'],
+             row['tags']
+             ))
+        # wykonaj query
+        db_conn.commit()
+
+    # teraz można zamknąć bazę
+    db_conn.close()

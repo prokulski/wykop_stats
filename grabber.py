@@ -1,3 +1,5 @@
+# Funkcje pomocnicze do czytania API
+
 # Dokumentacja API: https://www.wykop.pl/dla-programistow/apiv2docs/
 
 import pandas as pd
@@ -115,5 +117,5 @@ def get_wykop_month(year, month):
     df = pd.DataFrame(data['data'])
     while (len(data['data']) > 0):
         data = get_json(data['pagination']['next'])
-        df = df.append(pd.DataFrame(data['data']))
+        df = df.append(pd.DataFrame(data['data']), sort=False)
     return df
