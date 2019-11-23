@@ -1,0 +1,11 @@
+1. W cronie zbieramy dane co tydzien
+2. po zebraniu danych - zapisane są do CSV / SQL
+3. z CSV budujemy wykresy i zapisujemy jako pliki na dysk
+    + w Pythonie - plt.save()
+    + w R - ogarnie to rmarkdown
+4. z templatki HTMLowej generujemy treść strony
+    + w Pythonie: https://stackoverflow.com/a/6748854
+    + w R: rmarkdown jakiś
+5. Zapisujemy całość na dysk
+6. Kopiujemy w shellu z folderu tymczasowego na proda
+7. Automatycznie postujemy na wykopie link do wygenerowanego HTMLa

@@ -6,6 +6,9 @@ import json
 from api_keys import *
 
 
+# wykop_api_key = "xxx"
+# wykop_secret_key = "yyy"
+
 def print_pretty_dict(d):
     print(json.dumps(d, indent=4))
 
