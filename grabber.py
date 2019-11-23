@@ -4,7 +4,12 @@ import pandas as pd
 import urllib.request
 import json
 
+# TODOs -------------------------------------------
 # TODO: dodać fukkcje biorące info o użytkowniku
+# TODO: przerobić na klasę - jedno znalezisko to obiekt:
+#  Konstruktor: ID ajko argument + wez_info,
+#  metody: wez_komcie, wez_upvoters, wez_downvoters
+# -------------------------------------------------
 
 
 # klucz do api:
