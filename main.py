@@ -24,15 +24,15 @@ if __name__ == "__main__":
     # tworzymy tabelę na dane
     c.execute('''CREATE TABLE wykop_hits
                  (
-                    id long,
-                    date text,
-                    title text,
-                    author text,
-                    desc text,
-                    comments_count int,
-                    vote_count int,
-                    bury_count int,
-                    tags text
+                    id INTEGER,
+                    date TEXT,
+                    title TEXT,
+                    author TEXT,
+                    desc TEXT,
+                    comments_count INTEGER,
+                    vote_count INTEGER,
+                    bury_count INTEGER,
+                    tags TEXT
                  )''')
 
     # dla kolejnych wierszy:
@@ -43,14 +43,14 @@ if __name__ == "__main__":
         # włóż wiersz do tabeli
         c.execute(
             "INSERT INTO wykop_hits (id, date, title, author, desc, comments_count, vote_count, bury_count, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (row['id'],
+            (int(row['id']),
              row['date'],
              row['title'],
              row['login'],
              row['description'],
-             row['comments_count'],
-             row['vote_count'],
-             row['bury_count'],
+             int(row['comments_count']),
+             int(row['vote_count']),
+             int(row['bury_count']),
              row['tags']
              ))
         # wykonaj query
