@@ -13,6 +13,8 @@ if __name__ == "__main__":
 
     # pobranie hitów z miesiąca
     miesiac = get_wykop_month(cur_year, cur_month)
+
+    # login autora wyciągamy z zagnieżdżonego pola
     miesiac['login'] = miesiac['author'].apply(lambda x: x['login'])
 
     # tworzymy bazę danych
