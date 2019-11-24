@@ -31,3 +31,5 @@ if __name__ == "__main__":
     print(listopad.describe())
     print("\n== pocztątek tabelki:")
     print(listopad.head())
+    print("\n== pierwszy element:")
+    print(listopad.iloc[0])

@@ -34,8 +34,13 @@ if __name__ == "__main__":
                     comments_count INTEGER,
                     vote_count INTEGER,
                     bury_count INTEGER,
-                    tags TEXT
-                 )''')
+                    tags TEXT,
+                    url TEXT,
+                    status TEXT,
+                    plus18 INTEGER,
+                    is_hot INTEGER
+                 )
+                 ''')
 
     # dla kolejnych wierszy:
     for r in range(len(miesiac)):
@@ -44,7 +49,7 @@ if __name__ == "__main__":
 
         # włóż wiersz do tabeli
         c.execute(
-            "INSERT INTO wykop_hits (id, date, title, author, desc, comments_count, vote_count, bury_count, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO wykop_hits (id, date, title, author, desc, comments_count, vote_count, bury_count, tags, url, status, plus18, is_hot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (int(row['id']),
              row['date'],
              row['title'],
@@ -53,7 +58,11 @@ if __name__ == "__main__":
              int(row['comments_count']),
              int(row['vote_count']),
              int(row['bury_count']),
-             row['tags']
+             row['tags'],
+             row['source_url'],
+             row['status'],
+             int(row['plus18']),
+             int(row['is_hot'])
              ))
         # wykonaj query
         db_conn.commit()
