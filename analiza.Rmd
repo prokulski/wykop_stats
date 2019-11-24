@@ -149,6 +149,8 @@ wykop_hits %>%
        x = "", y = "Liczba dodanch znalezisk")
 ```
 
+----
+
 ```{r wykop_05}
 # liczba wykopów a liczba komentarzy
 wykop_hits %>%
