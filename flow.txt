@@ -9,3 +9,12 @@
 5. Zapisujemy całość na dysk
 6. Kopiujemy w shellu z folderu tymczasowego na proda
 7. Automatycznie postujemy na wykopie link do wygenerowanego HTMLa
+
+
+# TODO:
+- rozpoznawanie czy znalezisko sponsorowane czy nie
+- popularność domen
+- kto zakopuje, kto wykopuje - na totalu i na tagach
+- z jakich powodów zakopy?
+- kto komu zakopuje i wykopuje
+- steeming słów
