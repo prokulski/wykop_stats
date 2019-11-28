@@ -30,7 +30,7 @@ if __name__ == "__main__":
     miesiac['login'] = miesiac['author'].apply(lambda x: x['login'])
 
     # tworzymy bazę danych
-    db_conn = sqlite3.connect("wykop_hits_%04d_%02d.sqlite" % (cur_year, cur_month)
+    db_conn = sqlite3.connect("wykop_hits_%04d_%02d.sqlite" % (cur_year, cur_month))
     c = db_conn.cursor()
 
     # usuwamy tabelę jeśli istniała
