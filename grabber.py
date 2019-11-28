@@ -5,6 +5,7 @@
 import pandas as pd
 import urllib.request
 import json
+import time
 
 # TODOs -------------------------------------------
 # TODO: dodać fukkcje biorące info o użytkowniku
@@ -39,8 +40,29 @@ def get_json(url):
     :param url: URL do pliku JSON
     :return: pobrany JSON
     """
-    response = urllib.request.urlopen(url)
-    data = json.loads(response.read().decode())
+
+    while True:
+      # TODO w pętli sprawdzic czy nie błąd, ewentualnie poczekać
+      try:
+        response = urllib.request.urlopen(url)
+      except urllib.error.HTTPError as e:
+          # Return code error (e.g. 404, 501, ...)
+          print('HTTPError: {}'.format(e.code))
+      except urllib.error.URLError as e:
+          # Not an HTTP-specific error (e.g. connection refused)
+          print('URLError: {}'.format(e.reason))
+
+      data = json.loads(response.read().decode())
+
+      if 'error' in data:
+        print('Błąd: ' + data['error']['message_pl'])
+        print(f'Czekam teraz przez 10 minut ({time.ctime()})')
+        time.sleep(60*10)
+        print(f'Skończyłem czekać ({time.ctime()})')
+      else:
+        break
+
+    print("po pętli")
     return data
 
 
