@@ -47,7 +47,7 @@ if(day(today()) < 10) {
     y <- y-1
   }
 }
-db_filename <- sprintf("wykop_hits_%04d_%02d.sqlite", y, m))
+db_filename <- sprintf("wykop_hits_%04d_%02d.sqlite", y, m)
 
 # pobranie danych z tabeli
 wykop_hits <- src_sqlite(db_filename) %>%
