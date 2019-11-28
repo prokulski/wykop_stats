@@ -38,7 +38,16 @@ theme_set(theme_minimal())
 pl_stop_words <- read_lines("polish_stopwords.txt")
 
 # nazwa pliku z bazą danych
-db_filename <- sprintf("wykop_hits_%04d_%02d.sqlite", year(today()), month(today()))
+y <- year(today())
+m <- month(today())
+if(day(today()) < 10) {
+  m <- m-1
+  if(m < 0) {
+    m <- 12
+    y <- y-1
+  }
+}
+db_filename <- sprintf("wykop_hits_%04d_%02d.sqlite", y, m))
 
 # pobranie danych z tabeli
 wykop_hits <- src_sqlite(db_filename) %>%
@@ -55,7 +64,8 @@ wykop_hits <- wykop_hits %>%
          h = hour(date)) %>%
   mutate(title = str_replace_all(title, "&quot;", "\""),
          desc = str_replace_all(desc, "&quot;", "\"")) %>%
-  mutate(domain = domain(url) %>% str_remove_all("^www."))
+  mutate(domain = domain(url) %>% str_remove_all("^www.")) %>%
+  mutate(domain = if_else(domain == "youtu.be", "youtube.com", domain))
 
 
 # Zakres dat
