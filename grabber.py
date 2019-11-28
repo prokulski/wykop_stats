@@ -62,7 +62,6 @@ def get_json(url):
       else:
         break
 
-    print("po pętli")
     return data
 
 
