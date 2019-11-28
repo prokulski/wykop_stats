@@ -47,18 +47,20 @@ def get_json(url):
         response = urllib.request.urlopen(url)
       except urllib.error.HTTPError as e:
           # Return code error (e.g. 404, 501, ...)
-          print('HTTPError: {}'.format(e.code))
+          print('== API Error - HTTPError: {}'.format(e.code))
       except urllib.error.URLError as e:
           # Not an HTTP-specific error (e.g. connection refused)
-          print('URLError: {}'.format(e.reason))
+          print('== API Error - URLError: {}'.format(e.reason))
 
       data = json.loads(response.read().decode())
 
+      # print(data)
+
       if 'error' in data:
-        print('Błąd: ' + data['error']['message_pl'])
-        print(f'Czekam teraz przez 10 minut ({time.ctime()})')
+        print('== API Error: ' + data['error']['message_pl'])
+        print(f'\tCzekam teraz przez 10 minut ({time.ctime()})')
         time.sleep(60*10)
-        print(f'Skończyłem czekać ({time.ctime()})')
+        print(f'\tSkończyłem czekać ({time.ctime()})')
       else:
         break
 

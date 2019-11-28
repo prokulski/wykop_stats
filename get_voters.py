@@ -51,10 +51,9 @@ c.execute('CREATE TABLE downvoters (id INTEGER, downvoter TEXT, date TEXT, reaso
 
 # jedziemy każdy ID po kolei
 for r in range(len(df)):
-    # progress bar :)
-    print(f"{r} of {len(df)} @ {time.ctime()}")
-
     # pobieramy listę upvoters dla konkternego ID znaleziska
+    print(f"upvoters: {r} of {len(df)} @ {time.ctime()}")
+
     upvoters = get_wykop_upvoters(df.iloc[r]['id'])
     upvoters = pd.DataFrame(upvoters)
     # wyciągamy login wykopującego
@@ -64,7 +63,10 @@ for r in range(len(df)):
     # do pełnej tabeli pandasowej dodajemy listę dla danego ID
     # upvoters_full = upvoters_full.append(upvoters)
 
+
     # to samo dla downvoters
+    print(f"downvoters: {r} of {len(df)} @ {time.ctime()}")
+
     downvoters = get_wykop_downvoters(df.iloc[r]['id'])
     downvoters = pd.DataFrame(downvoters)
     downvoters['downvoter'] = downvoters['author'].apply(lambda x: x['login'])
