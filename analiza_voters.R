@@ -149,7 +149,7 @@ downvoters %>%
   ggplot() +
   geom_boxplot(aes(reason_name, p, group = reason_name, fill = reason_name),
                show.legend = FALSE) +
-  labs(title = "Przyczyny zakopów", x = "", "Procent zakopów")
+  labs(title = "Przyczyny zakopów", x = "", y = "Procent zakopów")
 
 
 # top zakopywaczy wg przyczyny
