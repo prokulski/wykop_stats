@@ -52,11 +52,10 @@ c.execute('CREATE TABLE downvoters (id INTEGER, downvoter TEXT, date TEXT, reaso
 # jedziemy każdy ID po kolei
 for r in range(len(df)):
     # progress bar :)
-    print(f"{time.ctime()} - {r} of {len(df)}")
+    print(f"{r} of {len(df)} @ {time.ctime()}")
 
     # pobieramy listę upvoters dla konkternego ID znaleziska
     upvoters = get_wykop_upvoters(df.iloc[r]['id'])
-    # TODO sprawdzić czy się udało, ewentualnie powtórzyć
     upvoters = pd.DataFrame(upvoters)
     # wyciągamy login wykopującego
     upvoters['upvoter'] = upvoters['author'].apply(lambda x: x['login'])
@@ -77,8 +76,6 @@ for r in range(len(df)):
     upvoters.to_sql("upvoters", db_conn, if_exists="append", index=False)
     downvoters.to_sql("downvoters", db_conn, if_exists="append", index=False)
 
-    # czekamy minutę, żeby nie przekroczyć limitu 500 zapytań na godzinę
-    time.sleep(60)
 
 # teraz można zamknąć bazę
 db_conn.close()
