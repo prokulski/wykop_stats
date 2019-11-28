@@ -1,6 +1,9 @@
 
 # Skrypt główny - zbiera dane z aktualnego miesiąca z Wykopu poprzez API i pakuje je do SQLite
 
+# TODO:
+# utworzenie tabelek na początek - razem z tabelami dla up- i down-voters
+
 import pandas as pd
 import time
 import sqlite3
@@ -11,15 +14,23 @@ if __name__ == "__main__":
     # bieżący miesiąc i rok
     cur_year = time.localtime().tm_year
     cur_month = time.localtime().tm_mon
+    # czy mamy początek miesiąca? jeśli tak - to pobieramy pełny poprzedni miesiąc!
+    if time.localtime().tm_mday < 10:
+        cur_month = cur_month - 1
+        # dopowiednie dostosowanie roku
+        if cur_month == 1:
+            cur_month = 12
+            cur_year = cur_year - 1
 
     # pobranie hitów z miesiąca
     miesiac = get_wykop_month(cur_year, cur_month)
+    # TODO: sprawdzić czy się udało, ewentualnie poczekać 15 minut i znowu sprawdzić
 
     # login autora wyciągamy z zagnieżdżonego pola
     miesiac['login'] = miesiac['author'].apply(lambda x: x['login'])
 
     # tworzymy bazę danych
-    db_conn = sqlite3.connect("wykop_hits_%04d_%02d.sqlite" % (time.localtime().tm_year, time.localtime().tm_mon))
+    db_conn = sqlite3.connect("wykop_hits_%04d_%02d.sqlite" % (cur_year, cur_month)
     c = db_conn.cursor()
 
     # usuwamy tabelę jeśli istniała

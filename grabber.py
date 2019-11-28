@@ -9,10 +9,10 @@ import json
 # TODOs -------------------------------------------
 # TODO: dodać fukkcje biorące info o użytkowniku
 # TODO: przerobić na klasę - jedno znalezisko to obiekt:
-#  Konstruktor: ID ajko argument + wez_info,
+#  Konstruktor: ID jako argument + wez_info,
 #  metody: wez_komcie, wez_upvoters, wez_downvoters
 # -------------------------------------------------
-
+# TODO: dodać obsługę błędów w przypadku wyczerpania limitu
 
 # klucz do api:
 from api_keys import *
