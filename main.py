@@ -1,3 +1,4 @@
+
 # Skrypt główny - zbiera dane z aktualnego miesiąca z Wykopu poprzez API i pakuje je do SQLite
 
 import pandas as pd
