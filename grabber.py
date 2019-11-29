@@ -54,9 +54,8 @@ def get_json(url):
 
       data = json.loads(response.read().decode())
 
-      # print(data)
-
       if 'error' in data:
+        print(data)
         print('== API Error: ' + data['error']['message_pl'])
         print(f'\tCzekam teraz przez 10 minut ({time.ctime()})')
         time.sleep(60*10)
