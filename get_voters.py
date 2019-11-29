@@ -34,6 +34,8 @@ df = pd.read_sql_query('SELECT id FROM wykop_hits;', db_conn)
 # TODO
 # tworzenie tabel przerzucić do main, tutaj tylko je zapisywać
 
+print("Tworzę tabele w bazie danych.")
+
 # upvoters - usuwamy tabelę jeśli istniała
 c.execute("DROP TABLE IF EXISTS upvoters")
 # tworzymy tabelę na dane
@@ -49,17 +51,20 @@ c.execute('CREATE TABLE downvoters (id INTEGER, downvoter TEXT, date TEXT, reaso
 # upvoters_full = pd.DataFrame()
 # downvoters_full = pd.DataFrame()
 
+print("Pobieram wykopy i zakopy...")
+
 # jedziemy każdy ID po kolei
 for r in range(len(df)):
     # pobieramy listę upvoters dla konkternego ID znaleziska
-    print(f"upvoters: {r} of {len(df)} @ {time.ctime()}")
+    print(f"upvoters  : {r} of {len(df)} @ {time.ctime()}")
 
-    upvoters = get_wykop_upvoters(df.iloc[r]['id'])
-    upvoters = pd.DataFrame(upvoters)
+    upvoters_org = get_wykop_upvoters(df.iloc[r]['id'])
+    upvoters = pd.DataFrame(upvoters_org)
     # wyciągamy login wykopującego
     upvoters['upvoter'] = upvoters['author'].apply(lambda x: x['login'])
     upvoters['id'] = df.iloc[r]['id']
     upvoters = upvoters[['id', 'upvoter', 'date']]
+
     # do pełnej tabeli pandasowej dodajemy listę dla danego ID
     # upvoters_full = upvoters_full.append(upvoters)
 
@@ -67,18 +72,33 @@ for r in range(len(df)):
     # to samo dla downvoters
     print(f"downvoters: {r} of {len(df)} @ {time.ctime()}")
 
-    downvoters = get_wykop_downvoters(df.iloc[r]['id'])
-    downvoters = pd.DataFrame(downvoters)
+    downvoters_org = get_wykop_downvoters(df.iloc[r]['id'])
+    downvoters = pd.DataFrame(downvoters_org)
     downvoters['downvoter'] = downvoters['author'].apply(lambda x: x['login'])
     downvoters['id'] = df.iloc[r]['id']
     downvoters = downvoters[['id', 'downvoter', 'date', 'reason']]
+
     # downvoters_full = downvoters_full.append(downvoters)
 
     # zamiast dodawać do _full może lepiej zapisać do SQLa?
-    upvoters.to_sql("upvoters", db_conn, if_exists="append", index=False)
-    downvoters.to_sql("downvoters", db_conn, if_exists="append", index=False)
+    try:
+      upvoters.to_sql("upvoters", db_conn, if_exists="append", index=False)
+    except:
+      print('Błąd w zapisie do bazy.\nupvoters - przyszło z grabbera:')
+      print(upvoters_org)
+      print('upvoters - pandas:')
+      print(upvoters_org)
+
+    try:
+      downvoters.to_sql("downvoters", db_conn, if_exists="append", index=False)
+    except:
+      print('Błąd w zapisie do bazy.\ndownvoters - przyszło z grabbera:')
+      print(downvoters_org)
+      print('downvoters - pandas:')
+      print(downvoters_org)
 
 
 # teraz można zamknąć bazę
 db_conn.close()
 
+print("Skończyłem.")
