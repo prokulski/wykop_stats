@@ -10,8 +10,6 @@ output:
 
 ```{r echo=FALSE, eval=FALSE}
 # TODO:
-# liczba wykopów na człowieka dziennie
-# liczba sponsorowanych znalezisk - w totalu, dzien po dniu i godzina po godzinie
 # podobna tematyka - tagi jako wektor + odległość kosinusową; między userami i domenami znalezisk, jakiś graf z tego... 
 ```
 
@@ -37,6 +35,15 @@ theme_set(theme_minimal())
 # polskie stop_words
 pl_stop_words <- read_lines("polish_stopwords.txt")
 
+# przyczyny wykopów - słownik
+reasons <- tribble(~reason, ~reason_name,
+                   5, "nie nadaje się",
+                   2, "spam",
+                   3, "informacja nieprawdziwa",
+                   1, "duplikat",
+                   4, "treść nieodpowiednia")
+
+
 # nazwa pliku z bazą danych
 y <- year(today())
 m <- month(today())
@@ -50,14 +57,16 @@ if(day(today()) < 10) {
 db_filename <- sprintf("wykop_hits_%04d_%02d.sqlite", y, m)
 
 # pobranie danych z tabeli
-wykop_hits <- src_sqlite(db_filename) %>%
-  tbl("wykop_hits") %>%
-  collect()
+znaleziska <- src_sqlite(db_filename) %>% tbl("wykop_hits") %>% collect()
+upvoters <- src_sqlite(db_filename) %>% tbl("upvoters") %>% collect()
+downvoters <- src_sqlite(db_filename) %>% tbl("downvoters") %>% collect()
+
 
 # uporządkowanie formatów danych
-wykop_hits <- wykop_hits %>%
+wykop_hits <- znaleziska %>%
   mutate(date = ymd_hms(date)) %>%
-  filter(as_date(date) != today()) %>%
+  # tylko z poprzedniego miesiąca
+  filter(as_date(date) <= ceiling_date(make_date(y, m, 15), "month")) %>%
   mutate(m = month(date),
          d = day(date),
          wd = wday(date, week_start = 1, label = TRUE),
@@ -67,37 +76,36 @@ wykop_hits <- wykop_hits %>%
   mutate(domain = domain(url) %>% str_remove_all("^www.")) %>%
   mutate(domain = if_else(domain == "youtu.be", "youtube.com", domain))
 
+upvoters <- upvoters %>%
+  mutate(date = ymd_hms(date)) %>%
+  # tylko z poprzedniego miesiąca
+  filter(as_date(date) <= ceiling_date(make_date(y, m, 15), "month")) %>%
+  mutate(m = month(date),
+         d = day(date),
+         wd = wday(date, week_start = 1, label = TRUE),
+         h = hour(date)) %>%
+  mutate(type = "up")
+
+
+downvoters <- downvoters %>%
+  mutate(date = ymd_hms(date)) %>%
+  # tylko z poprzedniego miesiąca
+  filter(as_date(date) <= ceiling_date(make_date(y, m, 15), "month")) %>%
+  mutate(m = month(date),
+         d = day(date),
+         wd = wday(date, week_start = 1, label = TRUE),
+         h = hour(date)) %>%
+  mutate(type = "down")
 
 # Zakres dat
-timeframe <- paste0("Znaleziska opublikowane pomiędzy ",
+timeframe <- paste0("Znaleziska opublikowane na główniej pomiędzy ",
                     format(min(wykop_hits$date), "%H:%M @ %d-%m-%Y"), " a ",
                     format(max(wykop_hits$date), "%H:%M @ %d-%m-%Y"))
 
 min_max_days <- as.numeric(max(wykop_hits$date) - min(wykop_hits$date), "days")
-
-# najpopularniejsi autorzy
-top_authors <- wykop_hits %>%
-  count(author) %>%
-  top_n(30, n)
 ```
 
-----
-
-```{r wykop_01}
-top_authors %>%
-  mutate(author = fct_reorder(author, n)) %>%
-  ggplot() +
-  geom_col(aes(author, n, fill = n), color = "gray80", show.legend = FALSE) +
-  coord_flip() +
-  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
-  labs(title = "Autorzy dodający najwięcej znalezisk",
-       subtitle = timeframe,
-       x = "", y = "Liczba dodanch znalezisk")
-```
-
-----
-
-```{r wykop_02, fig.width=10, fig.height=5}
+```{r wykop_01, fig.width=10, fig.height=5}
 # liczba znalezisk dodawana dzień po dniu
 wykop_hits %>%
   count(d) %>%
@@ -112,7 +120,7 @@ wykop_hits %>%
 
 ----
 
-```{r wykop_03, fig.width=10, fig.height=5}
+```{r wykop_02, fig.width=10, fig.height=5}
 # liczba znalezisk dodawana godzina po godzinie
 wykop_hits %>%
   count(h) %>%
@@ -127,7 +135,7 @@ wykop_hits %>%
 
 ----
 
-```{r wykop_04, fig.width=10, fig.height=5}
+```{r wykop_03, fig.width=10, fig.height=5}
 # czas dodania znaleziska
 wykop_hits %>%
   count(wd, h) %>%
@@ -144,7 +152,56 @@ wykop_hits %>%
 
 ----
 
-```{r wykop_14}
+```{r wykop_04}
+wykop_hits %>%
+  count(author) %>%
+  top_n(30, n) %>%
+  mutate(author = fct_reorder(author, n)) %>%
+  ggplot() +
+  geom_col(aes(author, n, fill = n), color = "gray80", show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Autorzy dodający najwięcej znalezisk",
+       subtitle = timeframe,
+       x = "", y = "Liczba dodanch znalezisk")
+```
+
+----
+
+```{r wykop_04a}
+wykop_hits %>% 
+  count(author) %>%
+  mutate(d = n/min_max_days) %>% 
+  top_n(30, d) %>% 
+  mutate(author = fct_reorder(author, d)) %>%
+  ggplot() + 
+  geom_col(aes(author, d, fill = d), color = "gray80", show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Autorzy o największej częstości dodawania znalezisk",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba znalezisk dodanch dziennie")
+```
+
+```{r wykop_05, fig.width=10, fig.height=5}
+wykop_hits %>% 
+  filter(is_hot == 1) %>%
+  count(author) %>%
+  top_n(30, n) %>%
+  filter(n != 1) %>%
+  mutate(author = fct_reorder(author, n)) %>%
+  ggplot() +
+  geom_col(aes(author, n, fill = n), color = "gray80", show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Autorzy dodający najwięcej znalezisk z płomieniem",
+       subtitle = timeframe,
+       x = "", y = "Liczba dodanch znalezisk z płomieniem")
+```
+
+----
+
+```{r wykop_06}
 # najpopularnieksze domeny znalezisk
 wykop_hits %>%
   count(domain) %>%
@@ -161,42 +218,22 @@ wykop_hits %>%
 
 ----
 
-```{r wykop_05}
-# liczba wykopów a liczba komentarzy
+```{r wykop_07, fig.width=10, fig.height=5}
+# najpopularnieksze domeny znalezisk
 wykop_hits %>%
+  filter(is_hot == 1) %>%
+  count(domain) %>%
+  top_n(30, n) %>%
+  filter(n != 1) %>%
+  mutate(domain = fct_reorder(domain, n)) %>%
   ggplot() +
-  geom_point(aes(vote_count, comments_count),
-             size = 2, alpha = 0.5) +
-  geom_smooth(aes(vote_count, comments_count),
-              method = 'loess',
-              color = "red", size = 1, se = FALSE) +
-  scale_x_log10() + scale_y_log10() +
-  labs(title = "Liczba wykopów i komentarzy",
+  geom_col(aes(domain, n, fill = n), color = "gray80", show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Domeny, z jakich pochodzi najwięcej znalezisk z płomieniem",
        subtitle = timeframe,
-       x = "Liczba wykopów (log)", y = "Liczba komentarzy (log)")
+       x = "", y = "Liczba dodanch znalezisk z płomieniem")
 ```
-
-Na jeden komentarz przypada średnio `r round(coef(lm(comments_count ~ vote_count, data = wykop_hits))[1], 1)` wykopów.
-
-----
-
-```{r wykop_06}
-# liczba wykopów a liczba zakopów
-wykop_hits %>%
-  filter(bury_count > 0) %>%
-  ggplot() +
-  geom_point(aes(vote_count, bury_count),
-             size = 2, alpha = 0.5) +
-  geom_smooth(aes(vote_count, bury_count),
-              method = 'loess',
-              color = "red", size = 1, se = FALSE) +
-  scale_x_log10() + scale_y_log10() +
-  labs(title = "Liczba wykopów i zakopów",
-       subtitle = timeframe,
-       x = "Liczba wykopów (log)", y = "Liczba zakopów (log)")
-```
-
-Na jeden zakop przypada średnio `r round(coef(lm(bury_count ~ vote_count, data = wykop_hits %>% filter(bury_count > 0)))[1], 1)` wykopów.
 
 ----
 
@@ -212,8 +249,47 @@ wykop_tag_data <- wykop_hits %>%
 top_tags <- wykop_tag_data %>%
   count(tag) %>%
   top_n(30, n)
+
+top_authors <- wykop_hits %>%
+  count(author) %>%
+  top_n(30, n)
+
+top_domains <- wykop_hits %>%
+  count(domain) %>%
+  top_n(30, n)
 ```
-```{r wykop_07}
+```{r wykop_08}
+# średnie liczby wykopów, zakopów i komentarzy na autora
+wykop_hits %>%
+  filter(author %in% top_authors$author) %>%
+  left_join(top_authors, by = "author") %>%
+  mutate(author = paste0(author, " (", n, ")")) %>%
+  #  arrange(desc(author)) %>%
+  mutate(author = fct_reorder(author, n)) %>%
+  group_by(author) %>%
+  summarise(m_vote_count = mean(vote_count),
+            m_comments_count = mean(comments_count),
+            m_bury_count = mean(bury_count)) %>%
+  ungroup() %>%
+  gather("k", "v", -author) %>%
+  ggplot() +
+  geom_point(aes(author, v, color = k), size = 3) +
+  scale_color_manual(values = c(m_vote_count = "blue",
+                                m_comments_count = "green",
+                                m_bury_count = "red"),
+                     labels = c(m_vote_count = "wykop",
+                                m_comments_count = "komentarz",
+                                m_bury_count = "zakop")) +
+  coord_flip()  +
+  theme(legend.position = "bottom") +
+  labs(title = "Średnia liczba wykopów, zakopów i komentarzy w zależności od autora",
+       subtitle = timeframe,
+       x = "", y = "Liczba wykopów / zakopów / komentarzy", color = "")
+```
+
+----
+
+```{r wykop_09}
 # średnie liczby wykopów, zakopów i komentarzy na tag
 wykop_tag_data %>%
   group_by(tag) %>%
@@ -237,25 +313,27 @@ wykop_tag_data %>%
   theme(legend.position = "bottom") +
   labs(title = "Średnia liczba wykopów, zakopów i komentarzy w zależności od tagu",
        subtitle = timeframe,
-       x = "", y = "Liczba wykopów / zakopów / komentarzy (log)", color = "")
+       x = "", y = "Liczba wykopów / zakopów / komentarzy", color = "")
 ```
 
 ----
 
-```{r wykop_08}
-# średnie liczby wykopów, zakopów i komentarzy na autroa
-wykop_tag_data %>%
-  group_by(author) %>%
+```{r wykop_10}
+# średnie liczby wykopów, zakopów i komentarzy na autora
+wykop_hits %>%
+  filter(domain %in% top_domains$domain) %>%
+  left_join(top_domains, by = "domain") %>%
+  mutate(domain = paste0(domain, " (", n, ")")) %>%
+  #  arrange(desc(author)) %>%
+  mutate(domain = fct_reorder(domain, n)) %>%
+  group_by(domain) %>%
   summarise(m_vote_count = mean(vote_count),
             m_comments_count = mean(comments_count),
             m_bury_count = mean(bury_count)) %>%
   ungroup() %>%
-  filter(author %in% top_authors$author) %>%
-  gather("k", "v", -author) %>%
-  arrange(desc(author)) %>%
-  mutate(author = fct_inorder(author)) %>%
+  gather("k", "v", -domain) %>%
   ggplot() +
-  geom_point(aes(author, v, color = k), size = 3) +
+  geom_point(aes(domain, v, color = k), size = 3) +
   scale_color_manual(values = c(m_vote_count = "blue",
                                 m_comments_count = "green",
                                 m_bury_count = "red"),
@@ -264,14 +342,360 @@ wykop_tag_data %>%
                                 m_bury_count = "zakop")) +
   coord_flip()  +
   theme(legend.position = "bottom") +
-  labs(title = "Średnia liczba wykopów, zakopów i komentarzy w zależności od autora",
+  labs(title = "Średnia liczba wykopów, zakopów i komentarzy w zależności od domeny znaleziska",
        subtitle = timeframe,
-       x = "", y = "Liczba wykopów / zakopów / komentarzy (log)", color = "")
+       x = "", y = "Liczba wykopów / zakopów / komentarzy", color = "")
 ```
 
 ----
 
-```{r wykop_09}
+```{r wykop_11, fig.width=10, fig.height=4}
+# ile dni prezentujemy na wykresie?
+N_DNI <- 2
+
+
+# UPVOTERS
+znaleziska %>%
+  select(id, author, wykop_date = date) %>%
+  inner_join(upvoters %>%
+               rename(vote_date = date),
+             by = "id") %>%
+  mutate(wykop_date = ymd_hms(wykop_date),
+         vote_date = ymd_hms(vote_date)) %>%
+  mutate(date_diff = round(as.numeric(vote_date - wykop_date, "hours"))) %>%
+  filter(date_diff <= 24*N_DNI) %>% # tylko pierwsze dwa dni
+  count(date_diff) %>%
+  ggplot() +
+  geom_col(aes(date_diff, n, fill = n),
+           color = "gray", size = 0.8, show.legend = FALSE) +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Rozkład czasowy wykopów",
+       x = "Godziny od dodania znaleziska",
+       y = "Łączna liczba wykopów\nna wszystkich znaleziskach")
+```
+
+----
+
+```{r wykop_12, fig.width=10, fig.height=4}
+# DOWNVOTERS
+znaleziska %>%
+  select(id, author, wykop_date = date) %>%
+  inner_join(downvoters %>%
+               rename(vote_date = date),
+             by = "id") %>%
+  mutate(wykop_date = ymd_hms(wykop_date),
+         vote_date = ymd_hms(vote_date)) %>%
+  mutate(date_diff = round(as.numeric(vote_date - wykop_date, "hours"))) %>%
+  filter(date_diff <= 24*N_DNI) %>% # tylko pierwsze dwa dni
+  count(date_diff) %>%
+  ggplot() +
+  geom_col(aes(date_diff, n, fill = n), color = "gray", size = 0.8, show.legend = FALSE) +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(title = "Rozkład czasowy zakopów",
+       x = "Godziny od dodania znaleziska",
+       y = "Łączna liczba zakopów\nna wszystkich znaleziskach")
+```
+
+----
+
+```{r}
+# jakie domeny wykopują i zakopują?
+upvoters_domain <- upvoters %>%
+  select(id, upvoter) %>%
+  left_join(wykop_hits %>% select(id, domain),
+            by = "id") %>%
+  count(upvoter, domain, sort = TRUE) %>%
+  left_join(upvoters %>%
+              count(upvoter) %>%
+              set_names(c("upvoter", "n_votes")),
+            by = "upvoter") %>%
+  mutate(p = 100*n/n_votes)
+
+downvoters_domain <- downvoters %>%
+  select(id, downvoter) %>%
+  left_join(wykop_hits %>% select(id, domain),
+            by = "id") %>%
+  count(downvoter, domain, sort = TRUE) %>%
+  left_join(downvoters %>%
+              count(downvoter) %>%
+              set_names(c("downvoter", "n_votes")),
+            by = "downvoter") %>%
+  mutate(p = 100*n/n_votes)
+```
+```{r wykop_13}
+# najbardziej wykopywane domeny
+upvoters_domain %>%
+  group_by(domain) %>%
+  summarise(n = sum(n)) %>%
+  ungroup() %>%
+  mutate(p = 100*n/nrow(upvoters)) %>%
+  top_n(30, p) %>%
+  mutate(domain = fct_reorder(domain, p)) %>%
+  ggplot() +
+  geom_col(aes(domain, p, fill = p), show.legend = FALSE, color = "gray") +
+  coord_flip() +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  labs(title = "Najczęściej wykopywane domeny",
+       x = "", y = "Procent wszystkich wykopów")
+```
+
+----
+
+```{r wykop_14}
+# najbardziej zakopywane domeny
+downvoters_domain %>%
+  group_by(domain) %>%
+  summarise(n = sum(n)) %>%
+  ungroup() %>%
+  mutate(p = 100*n/nrow(downvoters)) %>%
+  top_n(30, p) %>%
+  mutate(domain = fct_reorder(domain, p)) %>%
+  ggplot() +
+  geom_col(aes(domain, p, fill = p), show.legend = FALSE, color = "gray") +
+  coord_flip() +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  labs(title = "Najczęściej zakopywane domeny",
+       x = "", y = "Procent wszystkich zakopów")
+```
+
+----
+
+```{r wykop_15, fig.width=10, fig.height=5}
+downvoters %>%
+  count(id, reason) %>%
+  group_by(id) %>%
+  mutate(p = 100*n/sum(n)) %>%
+  ungroup() %>%
+  left_join(reasons, by = "reason") %>%
+  ggplot() +
+  geom_boxplot(aes(reason_name, p, group = reason_name, fill = reason_name),
+               show.legend = FALSE) +
+  geom_jitter(aes(reason_name, p), width = 0.25, alpha = 0.1, size = 0.5)  +
+  labs(title = "Przyczyny zakopów", x = "", y = "Procent zakopów")
+```
+
+----
+
+```{r wykop_16}
+# top zakopywaczy wg przyczyny
+downvoters_reason <- downvoters %>%
+  count(downvoter, reason) %>%
+  left_join(reasons, by = "reason")
+
+top_downvoters <- downvoters_reason %>%
+  group_by(downvoter) %>%
+  summarise(n = sum(n)) %>%
+  ungroup() %>%
+  top_n(30, n) %>%
+  arrange(n) %>%
+  pull(downvoter)
+
+downvoters_reason %>%
+  filter(downvoter %in% top_downvoters) %>%
+  mutate(downvoter = factor(downvoter, levels = top_downvoters),
+         reason_name = factor(reason_name, levels = rev(reasons$reason_name))) %>%
+  ggplot() +
+  geom_col(aes(downvoter, n, fill = reason_name), color = "gray", size = 0.7) +
+  coord_flip() +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme(legend.position = "bottom") +
+  labs(title = "Najczęściej zakopujący, według przyczyny",
+       x = "", y ="Łączna liczba zakopów",
+       fill = "")
+```
+
+----
+
+```{r wykop_17}
+# liczba wykopów a liczba zakopów
+wykop_hits %>%
+  filter(bury_count > 0) %>%
+  ggplot() +
+  geom_point(aes(vote_count, bury_count),
+             size = 2, alpha = 0.5) +
+  geom_smooth(aes(vote_count, bury_count),
+              method = 'loess',
+              color = "red", size = 1, se = FALSE) +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "Liczba wykopów i zakopów",
+       subtitle = timeframe,
+       x = "Liczba wykopów (log)", y = "Liczba zakopów (log)")
+```
+
+Na jeden zakop przypada średnio `r round(coef(lm(bury_count ~ vote_count, data = wykop_hits %>% filter(bury_count > 0)))[1], 1)` wykopów.
+
+----
+
+
+```{r wykop_18}
+# liczba wykopów a liczba komentarzy
+wykop_hits %>%
+  ggplot() +
+  geom_point(aes(vote_count, comments_count),
+             size = 2, alpha = 0.5) +
+  geom_smooth(aes(vote_count, comments_count),
+              method = 'loess',
+              color = "red", size = 1, se = FALSE) +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "Liczba wykopów i komentarzy",
+       subtitle = timeframe,
+       x = "Liczba wykopów (log)", y = "Liczba komentarzy (log)")
+```
+
+Na jeden komentarz przypada średnio `r round(coef(lm(comments_count ~ vote_count, data = wykop_hits))[1], 1)` wykopów.
+
+----
+
+```{r wykop_19, fig.width=10, fig.height=4}
+# liczba reakcji a hot
+wykop_hits %>%
+  mutate(is_hot = if_else(is_hot==1, "HOT", "non hot")) %>%
+  group_by(is_hot) %>%
+  summarise_at(c("comments_count", "vote_count" ,"bury_count"), mean) %>% 
+  ungroup() %>% 
+  rename("komentarze" = comments_count,
+         "wykopy" = vote_count,
+         "zakopy" = bury_count) %>%
+  gather("key", "value", -is_hot) %>% 
+  ggplot() + 
+  geom_col(aes(key, value, fill = is_hot), color = "gray",
+           position = position_dodge()) +
+  scale_fill_manual(values = c("non hot" = "lightgreen", "HOT" = "darkred"))  +
+  labs(title = "Średnia liczba interakcji w zależności od płomienia",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba interakcji",
+       fill = "") +
+  theme(legend.position = "bottom")
+```
+
+----
+
+```{r wykop_20, fig.width=10, fig.height=4}
+# liczba reakcji a plus18
+wykop_hits %>%
+  mutate(plus18 = if_else(plus18==1, "18+", "b.o.")) %>%
+  group_by(plus18) %>%
+  summarise_at(c("comments_count", "vote_count" ,"bury_count"), mean) %>% 
+  ungroup() %>% 
+  rename("komentarze" = comments_count,
+         "wykopy" = vote_count,
+         "zakopy" = bury_count) %>%
+  gather("key", "value", -plus18) %>% 
+  ggplot() + 
+  geom_col(aes(key, value, fill = plus18), color = "gray",
+           position = position_dodge()) +
+  scale_fill_manual(values = c("b.o." = "lightgreen", "18+" = "darkred")) +
+  labs(title = "Średnia liczba interakcji w zależności od ograniczenia wiekowego",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba interakcji",
+       fill = "") +
+  theme(legend.position = "bottom")
+```
+
+----
+
+```{r wykop_21, fig.width=10, fig.height=4}
+# liczba reakcji a dzień tygodnia dodania znaleziska
+wykop_hits %>%
+  group_by(wd) %>% 
+  summarise_at(c("comments_count", "vote_count" ,"bury_count"), mean) %>%
+  ungroup() %>% 
+  rename("komentarze" = comments_count,
+         "wykopy" = vote_count,
+         "zakopy" = bury_count) %>%
+  gather("key", "value", -wd) %>%
+  ggplot() + 
+  geom_col(aes(key, value, fill = wd), color = "gray",
+           position = position_dodge()) +
+  labs(title = "Średnia liczba interakcji w zależności od dnia tygodnia",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba interakcji",
+       fill = "Dzień tygodnia\ndodania znaleziska") +
+  theme(legend.position = "bottom")
+```
+
+----
+
+```{r wykop_22, fig.width=10, fig.height=4}
+# reakcje a dzień miesiąca
+bind_rows(upvoters, downvoters) %>%
+  mutate(d = as_date(date)) %>%
+  count(wd, d) %>%
+  ggplot() + 
+  geom_col(aes(d, n, fill = wd), show.legend = FALSE) +
+  scale_fill_manual(values = c("Pn" = "gray",
+                               "Wt" = "gray",
+                               "Śr" = "gray",
+                               "Cz" = "gray",
+                               "Pt" = "gray",
+                               "So" = "gray",
+                               "N" = "darkred"))  +
+  labs(title = "Liczba wykopów i zakopów w kolejnych dniach miesiąca",
+       subtitle = timeframe,
+       x = "", y = "Łączna liczba wykopów i zakopów\noddanych danego dnia")
+```
+
+----
+
+```{r wykop_23, fig.width=10, fig.height=4}
+# reakcje a dzień tygodnia
+bind_rows(upvoters, downvoters) %>% 
+  group_by(d, wd) %>%
+  summarise(l = n()) %>%
+  ungroup() %>% 
+  group_by(wd) %>% 
+  summarise(n = mean(l)) %>%
+  ungroup() %>% 
+  ggplot() +
+  geom_col(aes(wd, n, fill = n), color = "gray", show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  labs(title = "Średnia lczba wykopów i zakopów w zaleźności od dnia tygodnia wykopu/zakopu",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba wykopów i zakopów")
+```
+
+----
+
+```{r wykop_25, fig.width=10, fig.height=4}
+# reakcje a godzina
+bind_rows(upvoters, downvoters) %>% 
+  group_by(d, h) %>%
+  summarise(l = n()) %>% 
+  ungroup() %>% 
+  group_by(h) %>% 
+  summarise(n = mean(l)) %>% 
+  ungroup() %>% 
+  ggplot() + 
+  geom_col(aes(h, n, fill = n), color = "gray", show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  labs(title = "Średnia liczba wykopów i zakopów w zaleźności od godziny wykopu/zakopu",
+       subtitle = timeframe,
+       x = "", y = "Średnia liczba wykopów i zakopów")
+```
+----
+
+```{r wykop_25a, fig.width=10, fig.height=6}
+bind_rows(upvoters, downvoters) %>% 
+  mutate(week = week(date)) %>%
+  group_by(week) %>%
+  count(wd, h) %>% 
+  ungroup() %>%
+  group_by(wd, h) %>%
+  summarise(n = mean(n)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_tile(aes(wd, h, fill = n), color = "gray80", size = 0.5, show.legend = FALSE) +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  scale_y_reverse() +
+  theme(legend.position = "bottom") +
+  labs(title = "Średnia liczba wykopów i zakopów w zaleźności od pory tygodnia",
+       subtitle = timeframe,
+       x = "", y = "")
+```
+
+---
+
+```{r wykop_26}
 # kto postuje na jakim tagu?
 wykop_tag_data %>%
   filter(author %in% top_authors$author) %>%
@@ -290,7 +714,51 @@ wykop_tag_data %>%
 
 ----
 
-```{r wykop_10}
+```{r wykop_27}
+# kto postuje na jakim tagu?
+wykop_hits %>%
+  filter(!domain %in% (top_domains %>% top_n(3, n) %>% pull(domain))) %>%
+  count(author, domain) %>%
+  filter(n > quantile(n, 0.9)) %>%
+  ggplot() +
+  geom_tile(aes(author, domain, fill = n), color = "gray80", size = 0.5) +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0),
+        legend.position = "bottom") +
+  labs(title = "Jakie domeny postuje autor?",
+       subtitle = paste0(timeframe, "\nUWAGA: bez trzech najpopularniejszych domen, top 10% kombinacji autor-domena"),
+       x = "", y = "", fill = "Liczba opublikowanych znalezisk w miesiącu")
+```
+
+----
+
+```{r}
+# rozkład w miesiacu wg tagów
+tags_day_hour <- wykop_hits %>%
+  mutate(tag_list = str_split(tags, " ")) %>%
+  select(id, d, h, tag_list) %>%
+  pivot_longer(tag_list, values_to = "tag") %>%
+  unnest_longer(tag)
+```
+```{r wykop_28, fig.width=10, fig.height=6}
+tags_day_hour %>%
+  count(tag, d) %>%
+  group_by(tag) %>%
+  mutate(m_n = mean(n)) %>%
+  ungroup() %>%
+  filter(m_n > 5) %>%
+  filter(tag %in% top_tags$tag) %>%
+  ggplot() +
+  geom_line(aes(d, n, color = tag)) +
+  labs(title = "Najpopularniejsze tagi według dnia publikacji",
+       subtitle = timeframe,
+       x = "dzień publikacji", y = "średnia liczba znalezisk opublikowanych danego dnia",
+       color = "")
+```
+
+----
+
+```{r wykop_29}
 # poluparność słów w tytułach i opisach
 top_words <- wykop_hits %>%
   mutate(title = paste(title, desc)) %>%
@@ -339,7 +807,7 @@ top_words_list <- tag_word %>%
   top_n(30, n) %>%
   pull(word)
 ```
-```{r wykop_11}
+```{r wykop_30}
 # wystąpowanie słów w tagach
 tag_word %>%
   filter(tag %in% top_tags$tag) %>%
@@ -357,49 +825,3 @@ tag_word %>%
        subtitle = timeframe,
        x = "", y = "", fill = "Liczba słów w ramach tagu (w miesiącu)")
 ```
-
-----
-
-```{r}
-# rozkład w miesiacu wg tagów
-tags_day_hour <- wykop_hits %>%
-  mutate(tag_list = str_split(tags, " ")) %>%
-  select(id, d, h, tag_list) %>%
-  pivot_longer(tag_list, values_to = "tag") %>%
-  unnest_longer(tag)
-```
-```{r wykop_12, fig.width=10, fig.height=6}
-tags_day_hour %>%
-  count(tag, d) %>%
-  group_by(tag) %>%
-  mutate(m_n = mean(n)) %>%
-  ungroup() %>%
-  filter(m_n > 5) %>%
-  filter(tag %in% top_tags$tag) %>%
-  ggplot() +
-  geom_line(aes(d, n, color = tag)) +
-  labs(title = "Najpopularniejsze tagi według dnia publikacji",
-       subtitle = timeframe,
-       x = "dzień publikacji", y = "średnia liczba znalezisk opublikowanych danego dnia",
-       color = "")
-```
-
-----
-
-```{r wykop_13, fig.width=10, fig.height=6}
-# rozkład w dniu wg tagów
-tags_day_hour %>%
-  count(tag, h) %>%
-  group_by(tag) %>%
-  mutate(m_n = mean(n)) %>%
-  ungroup() %>%
-  filter(m_n > 5) %>%
-  filter(tag %in% top_tags$tag) %>%
-  ggplot() +
-  geom_line(aes(h, n, color = tag)) +
-  labs(title = "Najpopularniejsze tagi według godziny publikacji (uśrednione)",
-       subtitle = timeframe,
-       x = "godzina publikacji", y = "średnia liczba znalezisk opublikowanych o danej godzinie",
-       color = "")
-```
-
