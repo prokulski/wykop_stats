@@ -1,6 +1,6 @@
-1. W cronie zbieramy dane co tydzien
-2. po zebraniu danych - zapisane są do CSV / SQL
-3. z CSV budujemy wykresy i zapisujemy jako pliki na dysk
+1. W cronie zbieramy dane co tydzień
+2. po zebraniu danych - zapisane są do SQL
+3. z SQL budujemy wykresy i zapisujemy jako pliki na dysk
     + w Pythonie - plt.save()
     + w R - ogarnie to rmarkdown
 4. z templatki HTMLowej generujemy treść strony
@@ -13,15 +13,11 @@
 
 # TODO:
 - rozpoznawanie czy znalezisko sponsorowane czy nie
-- popularność domen
-- kto zakopuje, kto wykopuje - na totalu i na tagach
-- z jakich powodów zakopy?
 - kto komu zakopuje i wykopuje
 - steeming słów
 
 
 # Uruchomienie:
-
 python main.py
 python get_voters.py
 R -e "rmarkdown::render('raport.Rmd')"
