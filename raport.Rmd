@@ -102,8 +102,26 @@ timeframe <- paste0("Znaleziska opublikowane na główniej pomiędzy ",
                     format(min(wykop_hits$date), "%H:%M @ %d-%m-%Y"), " a ",
                     format(max(wykop_hits$date), "%H:%M @ %d-%m-%Y"))
 
+update_timestamp <- fs::file_info(db_filename)$modification_time[1]
+
 min_max_days <- as.numeric(max(wykop_hits$date) - min(wykop_hits$date), "days")
 ```
+
+
+----
+
+`r timeframe` to:
+
+* **`r nrow(wykop_hits)` sztuk**,
+* opublikowanych przez **`r length(unique(wykop_hits$author))` autorów**.
+* Znaleziska zgromadziły **`r sum(wykop_hits$vote_count)` wykopów** łącznie,
+* **`r sum(wykop_hits$bury_count)` zakopów** *(też łącznie)*
+* oraz w sumie **`r sum(wykop_hits$comments_count)`** komentarzy.
+* Znaleziska prowadzą do **`r length(unique(wykop_hits$domain))`** różnych domen.
+
+Jest to stan na moment zakończenia zbierania danych, czyli `r format(update_timestamp, "%H:%M @ %d-%m-%Y")`.
+
+----
 
 ```{r wykop_01, fig.width=10, fig.height=5}
 # liczba znalezisk dodawana dzień po dniu
