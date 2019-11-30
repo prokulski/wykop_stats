@@ -1,12 +1,13 @@
 
 # Skrypt główny - zbiera dane z aktualnego miesiąca z Wykopu poprzez API i pakuje je do SQLite
 
-# TODO:
-# utworzenie tabelek na początek - razem z tabelami dla up- i down-voters
+# TODO: przerobić printy na logi
 
-import pandas as pd
-import time
 import sqlite3
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from grabber import *
 
@@ -23,8 +24,9 @@ if __name__ == "__main__":
             cur_year = cur_year - 1
 
     # pobranie hitów z miesiąca
+    logging.info("Pobieram dane z Wykopu.")
     miesiac = get_wykop_month(cur_year, cur_month)
-    # TODO: sprawdzić czy się udało, ewentualnie poczekać 15 minut i znowu sprawdzić
+    logging.info("Dane pobrane")
 
     # login autora wyciągamy z zagnieżdżonego pola
     miesiac['login'] = miesiac['author'].apply(lambda x: x['login'])
@@ -35,7 +37,7 @@ if __name__ == "__main__":
 
     # usuwamy tabelę jeśli istniała
     c.execute("DROP TABLE IF EXISTS wykop_hits")
-    # tworzymy tabelę na dane
+    # tworzymy tabelę na dane o znaleziskach
     c.execute('''CREATE TABLE wykop_hits
                  (
                     id INTEGER,
@@ -53,7 +55,13 @@ if __name__ == "__main__":
                     is_hot INTEGER
                  )
                  ''')
+    # tworzymy tabelę na dane o wykopujących i zakopujących
+    c.execute("DROP TABLE IF EXISTS downvoters")
+    c.execute("DROP TABLE IF EXISTS upvoters")
+    c.execute('CREATE TABLE downvoters (id INTEGER, downvoter TEXT, date TEXT, reason INTEGER)')
+    c.execute('CREATE TABLE upvoters (id INTEGER, upvoter TEXT, date TEXT)')
 
+    logging.info("Zapisuję dane do bazy.")
     # dla kolejnych wierszy:
     for r in range(len(miesiac)):
         # weź jeden wiersz
@@ -81,3 +89,5 @@ if __name__ == "__main__":
 
     # teraz można zamknąć bazę
     db_conn.close()
+
+    logging.info("Skończyłem.")

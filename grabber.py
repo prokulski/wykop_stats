@@ -1,19 +1,15 @@
 # Funkcje pomocnicze do czytania API
 
+# TODO: dodać funkcje biorące info o użytkowniku
+
 # Dokumentacja API: https://www.wykop.pl/dla-programistow/apiv2docs/
 
 import pandas as pd
 import urllib.request
+import urllib.error
 import json
 import time
-
-# TODOs -------------------------------------------
-# TODO: dodać fukkcje biorące info o użytkowniku
-# TODO: przerobić na klasę - jedno znalezisko to obiekt:
-#  Konstruktor: ID jako argument + wez_info,
-#  metody: wez_komcie, wez_upvoters, wez_downvoters
-# -------------------------------------------------
-# TODO: dodać obsługę błędów w przypadku wyczerpania limitu
+import logging
 
 # klucz do api:
 from api_keys import *
@@ -24,20 +20,22 @@ from api_keys import *
 # wykop_secret_key = "yyy"
 
 
-def print_pretty_dict(d):
+def print_pretty_dict(d, indent=4):
     """
     Funkcja printuje JSONa w czytelny sposób
+    :param indent: ile spacji wcięcia?
     :param d: JSON
     :return:
     """
-    print(json.dumps(d, indent=4))
+    print(json.dumps(d, indent=indent))
 
 
-def get_json(url):
+def get_json(url, wait=30):
     """
     Funkcja pobiera JSONa z podanego URLa.
-    Zakłada się udało, nie sprawdza błędów itp.
+    Sprawdza błędy i w printuje je, czeka 30 minu
     :param url: URL do pliku JSON
+    :param wait: licza minut oczekiwania w razie niepowodzenia, domyślnie 30 minut
     :return: pobrany JSON
     """
 
@@ -48,26 +46,25 @@ def get_json(url):
             response = urllib.request.urlopen(url)
         except urllib.error.HTTPError as e:
             # Return code error (e.g. 404, 501, ...)
-            print('== API Error - HTTPError: {}'.format(e.code))
+            logging.warning('== API Error - HTTPError: {}'.format(e.code))
             error = True
         except urllib.error.URLError as e:
             # Not an HTTP-specific error (e.g. connection refused)
-            print('== API Error - URLError: {}'.format(e.reason))
+            logging.warning('== API Error - URLError: {}'.format(e.reason))
             error = True
 
-        data = json.loads(response.read().decode())
-
-        if 'error' in data:
-            print(data)
-            print('== API Error: ' + data['error']['message_pl'])
-            error = True
-        else:
-            break
+        if not error:
+            data = json.loads(response.read().decode())
+            if 'error' in data:
+                logging.warning('== API Error: ' + data['error']['message_pl'])
+                error = True
+            else:
+                break
 
         if error:
-            print(f'\tCzekam teraz przez 10 minut ({time.ctime()})')
-            time.sleep(60 * 10)
-            print(f'\tSkończyłem czekać ({time.ctime()})')
+            logging.warning('Czekam teraz przez 30 minut.')
+            time.sleep(60 * wait)
+            logging.warning('Skończyłem czekać.')
 
     return data
 
@@ -143,7 +140,9 @@ def get_wykop_month(year, month):
     """
     data = get_wykop_json("Hits/Month/" + str(year) + "/" + str(month))
     df = pd.DataFrame(data['data'])
+
     while (len(data['data']) > 0):
         data = get_json(data['pagination']['next'])
         df = df.append(pd.DataFrame(data['data']), sort=False)
+
     return df

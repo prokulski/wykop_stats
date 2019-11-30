@@ -1,16 +1,17 @@
+# TODO dodać logowanie zamiast printów
+# TODO: sprawdzić co zostało pobrane i dociągać resztę
+
+import time
+
 import pandas as pd
 import sqlite3
 
-import time
-import math
+import logging
+
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s :: %(levelname)s :: %(filename)s :: %(message)s')
 
 # wykorzystujemy metody z pakietu
 from grabber import get_wykop_upvoters,get_wykop_downvoters
-
-
-# TODO:
-# trzeba zrobić weryfikację czy API dobrze odpowiedziało - jeśli nie - to czekamy np. 15 minut i sprawdzamy ponownie
-# zamiast usuwać tabele na początku lepiej sprawdzić co zostało pobrane i dociągać resztę
 
 # bieżący miesiąc i rok
 cur_year = time.localtime().tm_year
@@ -30,55 +31,45 @@ c = db_conn.cursor()
 # pobiermy całą tabelę z listą znalezisk
 df = pd.read_sql_query('SELECT id FROM wykop_hits;', db_conn)
 
-
-# TODO
-# tworzenie tabel przerzucić do main, tutaj tylko je zapisywać
-
-print("Tworzę tabele w bazie danych.")
+logging.info("Opróżniam tabele w bazie danych.")
 
 # upvoters - usuwamy tabelę jeśli istniała
-c.execute("DROP TABLE IF EXISTS upvoters")
-# tworzymy tabelę na dane
-c.execute('CREATE TABLE upvoters (id INTEGER, upvoter TEXT, date TEXT)')
+c.execute("DELETE FROM upvoters")
+# downvoters - usuwamy dane z tabeli
+c.execute("DELETE FROM downvoters")
 
-# downvoters - usuwamy tabelę jeśli istniała
-c.execute("DROP TABLE IF EXISTS downvoters")
-# tworzymy tabelę na dane
-c.execute('CREATE TABLE downvoters (id INTEGER, downvoter TEXT, date TEXT, reason INTEGER)')
-
-
-# tabelka pandasowa na dane
-# upvoters_full = pd.DataFrame()
-# downvoters_full = pd.DataFrame()
-
-print("Pobieram wykopy i zakopy...")
+logging.info("Pobieram wykopy i zakopy...")
 
 # jedziemy każdy ID po kolei
-for r in range(len(df)):
-    # pobieramy listę upvoters dla konkternego ID znaleziska
-    print(f"upvoters  : {r} of {len(df)} @ {time.ctime()}")
+df_len = len(df)
+for r in range(df_len):
+    print(f"{r} of {df_len}")
 
+    logging.info(
+        "Pobieram upvoters dla {a} wiersza z {b} (znalezisko ID={c})".format(a=r, b=df_len, c=df.iloc[r]['id']))
+    # pobieramy listę upvoters dla konkternego ID znaleziska
     upvoters_org = get_wykop_upvoters(df.iloc[r]['id'])
     upvoters = pd.DataFrame(upvoters_org)
-
     # wyciągamy login wykopującego
     upvoters['upvoter'] = upvoters['author'].apply(lambda x: x['login'])
     upvoters['id'] = df.iloc[r]['id']
     upvoters = upvoters[['id', 'upvoter', 'date']]
 
     # to samo dla downvoters
-    print(f"downvoters: {r} of {len(df)} @ {time.ctime()}")
+    logging.info(
+        "Pobieram downvoters dla {a} wiersza z {b} (znalezisko ID={c})".format(a=r, b=df_len, c=df.iloc[r]['id']))
     downvoters_org = get_wykop_downvoters(df.iloc[r]['id'])
     downvoters = pd.DataFrame(downvoters_org)
     downvoters['downvoter'] = downvoters['author'].apply(lambda x: x['login'])
     downvoters['id'] = df.iloc[r]['id']
     downvoters = downvoters[['id', 'downvoter', 'date', 'reason']]
 
-    # zamiast dodawać do _full może lepiej zapisać do SQLa?
+    # dodanie zebranych danych do bazy w SQL
+    logging.info("Zapisuję do bazy info o upvoters i downvoters")
     upvoters.to_sql("upvoters", db_conn, if_exists="append", index=False)
     downvoters.to_sql("downvoters", db_conn, if_exists="append", index=False)
 
 # teraz można zamknąć bazę
 db_conn.close()
 
-print("Skończyłem.")
+logging.info("Skończyłem.")
