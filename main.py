@@ -7,7 +7,7 @@ import sqlite3
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s :: %(levelname)s :: %(filename)s :: %(message)s')
 
 from grabber import *
 
