@@ -30,7 +30,7 @@ def print_pretty_dict(d, indent=4):
     print(json.dumps(d, indent=indent))
 
 
-def get_json(url, wait=30):
+def get_json(url, wait=60):
     """
     Funkcja pobiera JSONa z podanego URLa.
     Sprawdza błędy i w printuje je, czeka 30 minu
@@ -62,7 +62,7 @@ def get_json(url, wait=30):
                 break
 
         if error:
-            logging.warning('Czekam teraz przez 30 minut.')
+            logging.warning('Czekam teraz przez ' + str(wait) + ' minut.')
             time.sleep(60 * wait)
             logging.warning('Skończyłem czekać.')
 
