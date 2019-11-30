@@ -18,3 +18,10 @@
 - z jakich powodów zakopy?
 - kto komu zakopuje i wykopuje
 - steeming słów
+
+
+# Uruchomienie:
+
+python main.py
+python get_voters.py
+R -e "rmarkdown::render('raport.Rmd')"
