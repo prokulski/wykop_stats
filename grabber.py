@@ -42,26 +42,32 @@ def get_json(url):
     """
 
     while True:
-      # TODO w pętli sprawdzic czy nie błąd, ewentualnie poczekać
-      try:
-        response = urllib.request.urlopen(url)
-      except urllib.error.HTTPError as e:
-          # Return code error (e.g. 404, 501, ...)
-          print('== API Error - HTTPError: {}'.format(e.code))
-      except urllib.error.URLError as e:
-          # Not an HTTP-specific error (e.g. connection refused)
-          print('== API Error - URLError: {}'.format(e.reason))
+        error = False
 
-      data = json.loads(response.read().decode())
+        try:
+            response = urllib.request.urlopen(url)
+        except urllib.error.HTTPError as e:
+            # Return code error (e.g. 404, 501, ...)
+            print('== API Error - HTTPError: {}'.format(e.code))
+            error = True
+        except urllib.error.URLError as e:
+            # Not an HTTP-specific error (e.g. connection refused)
+            print('== API Error - URLError: {}'.format(e.reason))
+            error = True
 
-      if 'error' in data:
-        print(data)
-        print('== API Error: ' + data['error']['message_pl'])
-        print(f'\tCzekam teraz przez 10 minut ({time.ctime()})')
-        time.sleep(60*10)
-        print(f'\tSkończyłem czekać ({time.ctime()})')
-      else:
-        break
+        data = json.loads(response.read().decode())
+
+        if 'error' in data:
+            print(data)
+            print('== API Error: ' + data['error']['message_pl'])
+            error = True
+        else:
+            break
+
+        if error:
+            print(f'\tCzekam teraz przez 10 minut ({time.ctime()})')
+            time.sleep(60 * 10)
+            print(f'\tSkończyłem czekać ({time.ctime()})')
 
     return data
 
