@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # akutalny rok i poprzedni numer miesiąca
+# TODO: trzeba dodać wiodące zero dla miesiąca
 YEAR=$(date +%Y)
 MONTH=$(($(date +%m)-1))
 
