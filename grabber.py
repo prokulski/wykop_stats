@@ -12,6 +12,7 @@ import time
 import logging
 
 # klucz do api:
+# TODO: może lepiej użyć zmiennych systemowych?
 from api_keys import *
 
 
